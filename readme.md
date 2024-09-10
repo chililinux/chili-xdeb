@@ -1,4 +1,4 @@
-#### Ignoring the logs might break your system. Please use releases.
+### Caution: Ignoring bold red error messages can mess up your system. This is the result of a missing error check in xbps. Do not blame the script for this.
 
 # xdeb
 xdeb is a posix shell script for converting deb(ian) packages to the xbps format.
@@ -8,8 +8,8 @@ xdeb is a posix shell script for converting deb(ian) packages to the xbps format
 ### Converting packages
 Conversion will create files in your current working directory. Refer to [the installation instruction](#Installation) for more information.
 
-1. Download xdeb: `curl -LO github.com/xdeb-org/xdeb/releases/latest/download/xdeb`
-2. Install dependencies: `xbps-install binutils tar curl xbps xz`
+1. Install dependencies: `xbps-install binutils tar curl xbps xz`
+2. Download xdeb: `curl -LO github.com/xdeb-org/xdeb/releases/latest/download/xdeb`
 3. Set executable bit: `chmod 0744 xdeb`
 4. Convert: `./xdeb -Sedf <name>_<version>_<arch>.deb`
 5. Install: `xbps-install -R ./binpkgs <name>`
@@ -25,33 +25,41 @@ Options can also be set via environment variables:
 ```
 export XDEB_OPT_DEPS=true
 export XDEB_OPT_SYNC=true
-export XDEB_OPT_WARN_CONFLICT=true
+export XDEB_OPT_INSTALL=true
 export XDEB_OPT_FIX_CONFLICT=true
+export XDEB_OPT_WARN_CONFLICT=true
 ```
 
 More information:
 ```sh
 usage: xdeb [-S] [-d] [-Sd] [--deps] ... FILE
-  -d                         # Automatic dependencies
-  -S                         # Sync runtime dependency file
-  -c                         # Clean everything except shlibs and binpkgs
-  -r                         # Clean repodata (Use when rebuilding a package)
-  -q                         # Extract files, quit before building
-  -C                         # Clean all files
-  -b                         # No extract, just build files in destdir
-  -e                         # Remove empty directories
-  -m                         # Add the -32bit suffix
-  -i                         # Ignore file conflicts
-  -f                         # Attempt to automatically fix common conflicts
-  --deps=...                 # Add manual dependencies
-  --arch=...                 # Add an arch for the package to run on
-  --revision=... | --rev=... # Set package revision. Alternative to -r
-  --help | -h                # Show this page
+  -d                          Automatic dependency resolution
+  -S                          Download shlibs file for automatic dependencies
+  -c                          Like -C, excluding shlibs and binpkgs
+  -r                          Remove repodata file (Use for re-building)
+  -R                          Do not register package in repository pool.
+  -q                          Extract .deb into destdir only, do not build
+  -C                          Remove all files created by this script
+  -b                          Build from destdir directly without a .deb file
+  -e                          Remove empty directories from the package
+  -m                          Add the -32bit suffix to the package name
+  -i                          Don't warn if package could break the system
+  -f                          Try to fix certain file conflicts (deprecated)
+  -F                          Don't try to fix certain file conflicts
+  -I                          Automatically install the package
+  --deps=...                  Packages that shall be added as dependencies
+  --not-deps=...              Packages that shall not be used as dependencies
+  --arch=...                  Package arch
+  --name=...                  Package name
+  --version=...               Package version
+  --revision=... --rev=...    Package revision
+  --post-extract=...          File with post-extract commands (i.e. /dev/stdin)
+  --help | -h                 Show help page
 
 example:
-  xdeb -Cq                   # Remove all files and quit
-  xdeb -Sd FILE              # Sync depdendency list and create package
-  xdeb --deps='tar>0' FILE   # Add tar as manual dependency and create package
+  xdeb -Cq                    Remove all files and quit
+  xdeb -Sd FILE               Sync depdendency list and create package
+  xdeb --deps='tar>0' FILE    Add tar as manual dependency and create package
 ```
 
 #### Automatic Dependencies
@@ -83,7 +91,7 @@ Conflicts can either be resolved automatically (`-f`) or manually.
 3. Fix files (Example: remove): `rm -rf ${XDEB_PKGROOT-.}/destdir/usr/lib`
 4. Build package without conflicts: `./xdeb -rb`
 
-#### Using Manual dependencies
+#### Using manual dependencies
 Converting `Minecraft.deb` with manual dependency `oracle-jre` (Version 8 or later):
 ```sh
 $ ./xdeb -Sedr --deps='oracle-jre>=8' ~/Downloads/Minecraft.deb
@@ -113,6 +121,29 @@ Space available on disk:       276GB
 Do you want to continue? [Y/n] n
 ```
 Add `>0` to match any version (i.e. `--deps='tar>0 base-system>0 curl>0'`)
+
+
+#### Ignoring dependencies
+
+When converting packages for electron based appliciations, `xdeb` may
+mistakenly add `musl` as a dependency. This can be resolved by using the
+`--not-deps` flag to blacklist certain dependencies:
+
+```
+$ ./xdeb -Sedf --not-deps="musl" ~/Downloads/gitkraken-amd64.deb
+I Synced shlibs
+I Extracted files
+W Unable to find dependency for libcrypto.so.1.0.0
+W Unable to find dependency for libcrypto.so.1.1
+W Unable to find dependency for libcrypto.so.10
+W Unable to find dependency for libssl.so.1.0.0
+W Unable to find dependency for libssl.so.1.1
+W Unable to find dependency for libssl.so.10
+I Resolved dependencies (alsa-lib>=1.0.20_1 at-spi2-atk>=2.6.0_1 at-spi2-core>=1.91.91_1 atk>=1.26.0_1 cairo>=1.8.6_1 dbus-libs>=1.2.10_1 e2fsprogs-libs>=1.41.5_1 expat>=2.0.0_1 glib>=2.80.0_1 glibc>=2.39_1 gtk+3>=3.0.0_1 libX11>=1.2_1 libXcomposite>=0.4.0_1 libXdamage>=1.1.1_1 libXext>=1.0.5_1 libXfixes>=4.0.3_1 libXrandr>=1.3.0_1 libcups>=1.5.3_1 libcurl>=7.75.0_2 libdrm>=2.4.6_1 libgbm>=9.0_1 libgcc>=4.4.0_1 libstdc++>=4.4.0_1 libxcb>=1.2_1 libxkbcommon>=0.2.0_1 libxkbfile>=1.0.5_1 mit-krb5-libs>=1.8_1 nspr>=4.8_1 nss>=3.12.4_1 pango>=1.24.0_1 zlib>=1.2.3_1)
+index: skipping `gitkraken-9.13.0_1' (x86_64), already registered.
+index: 1 packages registered.
+I Install using `xbps-install -R ./binpkgs gitkraken-9.13.0_1`
+```
 
 ## Rationale
 
